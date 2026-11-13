@@ -1,0 +1,6 @@
+{
+  "name": "PontoRural & Empresarial",
+  "description": "Sistema multiempresa para gestão de jornadas, funcionários e geração automática em lote de folhas de ponto manuais em formato A4.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

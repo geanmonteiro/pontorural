@@ -1,0 +1,362 @@
+{
+  "entities": {
+    "Company": {
+      "title": "Company",
+      "description": "Empresa ou fazenda empregadora exibida no cabeçalho da folha de ponto.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID do usuário autenticado proprietário do registro.",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Razão social ou nome do empregador.",
+          "minLength": 2,
+          "maxLength": 160
+        },
+        "cnpj": {
+          "type": "string",
+          "description": "CNPJ ou CPF do empregador formatado.",
+          "minLength": 11,
+          "maxLength": 24
+        },
+        "address": {
+          "type": "string",
+          "description": "Endereço completo da sede ou fazenda.",
+          "minLength": 4,
+          "maxLength": 240
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "name", "cnpj", "address", "createdAt", "updatedAt"]
+    },
+    "Schedule": {
+      "title": "Schedule",
+      "description": "Modelo de jornada de trabalho reutilizável vinculado a uma empresa.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "companyId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "descriptionText": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 240
+        },
+        "restDays": {
+          "type": "array",
+          "description": "Lista de dias da semana de folga (0=Dom a 6=Sab)."
+        },
+        "defaultMorningEnd": {
+          "type": "string",
+          "maxLength": 10
+        },
+        "defaultAfternoonStart": {
+          "type": "string",
+          "maxLength": 10
+        },
+        "showPreFilledInterval": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "companyId",
+        "name",
+        "descriptionText",
+        "restDays",
+        "defaultMorningEnd",
+        "defaultAfternoonStart",
+        "showPreFilledInterval",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Employee": {
+      "title": "Employee",
+      "description": "Cadastro de funcionário vinculado a uma empresa e jornada.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "companyId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "scheduleId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 140
+        },
+        "role": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "cpf": {
+          "type": "string",
+          "minLength": 11,
+          "maxLength": 20
+        },
+        "registrationNumber": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "admissionDate": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "maxLength": 10
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "companyId",
+        "scheduleId",
+        "name",
+        "role",
+        "cpf",
+        "registrationNumber",
+        "admissionDate",
+        "active",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CustomHoliday": {
+      "title": "CustomHoliday",
+      "description": "Feriado estadual, municipal ou específico da empresa.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "companyId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "MM-DD se recorrente ou YYYY-MM-DD se data única.",
+          "minLength": 5,
+          "maxLength": 10
+        },
+        "recurringYearly": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "companyId",
+        "name",
+        "dateKey",
+        "recurringYearly",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MonthOverride": {
+      "title": "MonthOverride",
+      "description": "Ajustes manuais de dias (folga, feriado, útil) por empresa, mês e opcionalmente funcionário.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "companyId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "yearMonth": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}$",
+          "maxLength": 7
+        },
+        "targetId": {
+          "type": "string",
+          "description": "ALL para toda a empresa ou employeeId específico.",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "dayOverrides": {
+          "type": "object",
+          "description": "Mapa de dia (01..31) para tipo e horários customizados."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "companyId",
+        "yearMonth",
+        "targetId",
+        "dayOverrides",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserSubscription": {
+      "title": "UserSubscription",
+      "description": "Plano comercial escolhido pelo usuário no cadastro ou atualização de assinatura.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "planId": {
+          "type": "string",
+          "enum": ["essencial", "profissional", "escritorio"]
+        },
+        "billingCycle": {
+          "type": "string",
+          "enum": ["monthly", "yearly"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "planId", "billingCycle", "createdAt", "updatedAt"]
+    },
+    "MigrationRecord": {
+      "title": "MigrationRecord",
+      "description": "Registro imutável de migração de esquema aplicada no banco do usuário.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "version": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "status": {
+          "type": "string",
+          "enum": ["applied"]
+        },
+        "appliedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "version", "name", "status", "appliedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/companies/{companyId}": {
+      "schema": { "$ref": "#/entities/Company" },
+      "description": "Empresas cadastradas pelo usuário."
+    },
+    "/users/{userId}/schedules/{scheduleId}": {
+      "schema": { "$ref": "#/entities/Schedule" },
+      "description": "Jornadas de trabalho cadastradas pelo usuário."
+    },
+    "/users/{userId}/employees/{employeeId}": {
+      "schema": { "$ref": "#/entities/Employee" },
+      "description": "Funcionários cadastrados pelo usuário."
+    },
+    "/users/{userId}/customHolidays/{holidayId}": {
+      "schema": { "$ref": "#/entities/CustomHoliday" },
+      "description": "Feriados personalizados por empresa."
+    },
+    "/users/{userId}/monthOverrides/{overrideId}": {
+      "schema": { "$ref": "#/entities/MonthOverride" },
+      "description": "Ajustes pontuais de dias no mês por empresa ou funcionário."
+    },
+    "/users/{userId}/subscriptions/{subscriptionId}": {
+      "schema": { "$ref": "#/entities/UserSubscription" },
+      "description": "Plano de assinatura selecionado pelo usuário."
+    },
+    "/users/{userId}/migrations/{migrationId}": {
+      "schema": { "$ref": "#/entities/MigrationRecord" },
+      "description": "Histórico de migrações aplicadas no Firestore do usuário."
+    }
+  }
+}

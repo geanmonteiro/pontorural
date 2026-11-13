@@ -1,0 +1,262 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default-deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Shared security primitives
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Entity validation helpers (matching firebase-blueprint.json limits)
+    function isValidCompany(data, userId) {
+      return data.keys().hasAll(['ownerId', 'name', 'cnpj', 'address', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'name', 'cnpj', 'address', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && data.ownerId == userId && data.ownerId.size() <= 128
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 160
+        && data.cnpj is string && data.cnpj.size() >= 11 && data.cnpj.size() <= 24
+        && data.address is string && data.address.size() >= 4 && data.address.size() <= 240
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSchedule(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'companyId', 'name', 'descriptionText', 'restDays',
+          'defaultMorningEnd', 'defaultAfternoonStart', 'showPreFilledInterval',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'companyId', 'name', 'descriptionText', 'restDays',
+          'defaultMorningEnd', 'defaultAfternoonStart', 'showPreFilledInterval',
+          'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId == userId && data.ownerId.size() <= 128
+        && isValidId(data.companyId)
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 100
+        && data.descriptionText is string && data.descriptionText.size() >= 2 && data.descriptionText.size() <= 240
+        && data.restDays is list && data.restDays.size() <= 7
+        && (data.restDays.size() == 0 || (data.restDays[0] is int && data.restDays[0] >= 0 && data.restDays[0] <= 6))
+        && data.defaultMorningEnd is string && data.defaultMorningEnd.size() <= 10
+        && data.defaultAfternoonStart is string && data.defaultAfternoonStart.size() <= 10
+        && data.showPreFilledInterval is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidEmployee(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'companyId', 'scheduleId', 'name', 'role', 'cpf',
+          'registrationNumber', 'admissionDate', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'companyId', 'scheduleId', 'name', 'role', 'cpf',
+          'registrationNumber', 'admissionDate', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId == userId && data.ownerId.size() <= 128
+        && isValidId(data.companyId)
+        && isValidId(data.scheduleId)
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 140
+        && data.role is string && data.role.size() >= 2 && data.role.size() <= 120
+        && data.cpf is string && data.cpf.size() >= 11 && data.cpf.size() <= 20
+        && data.registrationNumber is string && data.registrationNumber.size() >= 1 && data.registrationNumber.size() <= 32
+        && data.admissionDate is string && data.admissionDate.size() == 10 && data.admissionDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCustomHoliday(data, userId) {
+      return data.keys().hasAll(['ownerId', 'companyId', 'name', 'dateKey', 'recurringYearly', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'companyId', 'name', 'dateKey', 'recurringYearly', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && data.ownerId == userId && data.ownerId.size() <= 128
+        && isValidId(data.companyId)
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 100
+        && data.dateKey is string && data.dateKey.size() >= 5 && data.dateKey.size() <= 10
+        && data.recurringYearly is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMonthOverride(data, userId) {
+      return data.keys().hasAll(['ownerId', 'companyId', 'yearMonth', 'targetId', 'dayOverrides', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'companyId', 'yearMonth', 'targetId', 'dayOverrides', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && data.ownerId == userId && data.ownerId.size() <= 128
+        && isValidId(data.companyId)
+        && data.yearMonth is string && data.yearMonth.size() == 7 && data.yearMonth.matches('^\\d{4}-\\d{2}$')
+        && isValidId(data.targetId)
+        && data.dayOverrides is map && data.dayOverrides.size() <= 31
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSubscription(data, userId) {
+      return data.keys().hasAll(['ownerId', 'planId', 'billingCycle', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'planId', 'billingCycle', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && data.ownerId == userId && data.ownerId.size() <= 128
+        && data.planId in ['essencial', 'profissional', 'escritorio']
+        && data.billingCycle in ['monthly', 'yearly']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMigration(data, userId) {
+      return data.keys().hasAll(['ownerId', 'version', 'name', 'status', 'appliedAt'])
+        && data.keys().hasOnly(['ownerId', 'version', 'name', 'status', 'appliedAt'])
+        && data.ownerId is string && data.ownerId == userId && data.ownerId.size() <= 128
+        && data.version is int && data.version >= 1 && data.version <= 10000
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 120
+        && data.status == 'applied'
+        && data.appliedAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list, create, update, delete: if false;
+
+      match /migrations/{migrationId} {
+        allow get: if isOwner(userId) && isValidId(migrationId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isOwner(userId) && isValidId(migrationId)
+          && isValidMigration(incoming(), userId)
+          && incoming().appliedAt == request.time;
+        allow update, delete: if false;
+      }
+
+      match /subscriptions/{subscriptionId} {
+        allow get: if isOwner(userId) && isValidId(subscriptionId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isOwner(userId) && isValidId(subscriptionId)
+          && isValidSubscription(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isOwner(userId) && isValidId(subscriptionId)
+          && isValidSubscription(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['planId', 'billingCycle', 'updatedAt']);
+        allow delete: if false;
+      }
+
+      match /companies/{companyId} {
+        allow get: if isOwner(userId) && isValidId(companyId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isOwner(userId) && isValidId(companyId)
+          && isValidCompany(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isOwner(userId) && isValidId(companyId)
+          && isValidCompany(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'cnpj', 'address', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(companyId) && existing().ownerId == request.auth.uid;
+      }
+
+      match /schedules/{scheduleId} {
+        allow get: if isOwner(userId) && isValidId(scheduleId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isOwner(userId) && isValidId(scheduleId)
+          && isValidSchedule(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId)/companies/$(incoming().companyId));
+        allow update: if isOwner(userId) && isValidId(scheduleId)
+          && isValidSchedule(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().companyId == existing().companyId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'descriptionText', 'restDays', 'defaultMorningEnd',
+            'defaultAfternoonStart', 'showPreFilledInterval', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(scheduleId) && existing().ownerId == request.auth.uid;
+      }
+
+      match /employees/{employeeId} {
+        allow get: if isOwner(userId) && isValidId(employeeId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isOwner(userId) && isValidId(employeeId)
+          && isValidEmployee(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId)/companies/$(incoming().companyId))
+          && exists(/databases/$(database)/documents/users/$(userId)/schedules/$(incoming().scheduleId));
+        allow update: if isOwner(userId) && isValidId(employeeId)
+          && isValidEmployee(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().companyId == existing().companyId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId)/schedules/$(incoming().scheduleId))
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'scheduleId', 'name', 'role', 'cpf', 'registrationNumber',
+            'admissionDate', 'active', 'updatedAt'
+          ]);
+        allow delete: if isOwner(userId) && isValidId(employeeId) && existing().ownerId == request.auth.uid;
+      }
+
+      match /customHolidays/{holidayId} {
+        allow get: if isOwner(userId) && isValidId(holidayId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isOwner(userId) && isValidId(holidayId)
+          && isValidCustomHoliday(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId)/companies/$(incoming().companyId));
+        allow update: if isOwner(userId) && isValidId(holidayId)
+          && isValidCustomHoliday(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().companyId == existing().companyId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'dateKey', 'recurringYearly', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(holidayId) && existing().ownerId == request.auth.uid;
+      }
+
+      match /monthOverrides/{overrideId} {
+        allow get: if isOwner(userId) && isValidId(overrideId) && (resource == null || existing().ownerId == request.auth.uid);
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isOwner(userId) && isValidId(overrideId)
+          && isValidMonthOverride(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId)/companies/$(incoming().companyId));
+        allow update: if isOwner(userId) && isValidId(overrideId)
+          && isValidMonthOverride(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().companyId == existing().companyId
+          && incoming().yearMonth == existing().yearMonth
+          && incoming().targetId == existing().targetId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['dayOverrides', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(overrideId) && existing().ownerId == request.auth.uid;
+      }
+    }
+  }
+}
